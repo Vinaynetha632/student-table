@@ -1,66 +1,106 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useState } from 'react';
+import { useStudents } from '@/hooks/useStudents';
+import { Student } from '@/types/student';
+import { StudentTable } from '@/components/StudentTable';
+import { StudentModal } from '@/components/StudentModal';
+import { StudentDeleteModal } from '@/components/StudentDeleteModal';
+import { Plus, Download } from 'lucide-react';
+import * as xlsx from 'xlsx';
+import { toast } from 'react-hot-toast';
 
 export default function Home() {
+  const { students, isLoading, isActionLoading, addStudent, updateStudent, deleteStudent } = useStudents();
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | undefined>(undefined);
+
+  const handleOpenModal = (student?: Student) => {
+    setSelectedStudent(student);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedStudent(undefined);
+    setIsModalOpen(false);
+  };
+
+  const handleOpenDelete = (student: Student) => {
+    setSelectedStudent(student);
+    setIsDeleteModalOpen(true);
+  };
+
+  const exportToExcel = () => {
+    if (students.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+    try {
+      const worksheet = xlsx.utils.json_to_sheet(students.map(s => ({
+        Name: s.name,
+        Email: s.email,
+        Age: s.age
+      })));
+      const workbook = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(workbook, worksheet, 'Students');
+      xlsx.writeFile(workbook, 'StudentsList.xlsx');
+      toast.success('Downloaded successfully!');
+    } catch (err) {
+      toast.error('Failed to download Excel file');
+    }
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="container animate-fade-in">
+      <header className="header">
+        <h1 className="title">Students</h1>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button onClick={exportToExcel} className="btn btn-secondary" disabled={isLoading || students.length === 0}>
+            <Download size={20} />
+            Export
+          </button>
+          <button onClick={() => handleOpenModal()} className="btn btn-primary" disabled={isLoading}>
+            <Plus size={20} />
+            Add Student
+          </button>
+        </div>
+      </header>
+
+      {isLoading ? (
+        <div className="empty-state">
+          <div className="loader" style={{ width: '3rem', height: '3rem' }}></div>
+          <p style={{ marginTop: '1rem' }}>Loading students...</p>
+        </div>
+      ) : (
+        <StudentTable 
+          students={students} 
+          onEdit={handleOpenModal} 
+          onDelete={handleOpenDelete} 
         />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+
+      {isModalOpen && (
+        <StudentModal 
+          student={selectedStudent} 
+          onClose={handleCloseModal} 
+          onSubmit={selectedStudent ? (data) => updateStudent(selectedStudent.id, data) : addStudent} 
+          isActionLoading={isActionLoading} 
+        />
+      )}
+
+      {isDeleteModalOpen && selectedStudent && (
+        <StudentDeleteModal 
+          student={selectedStudent} 
+          onClose={() => setIsDeleteModalOpen(false)} 
+          onConfirm={() => {
+            deleteStudent(selectedStudent.id);
+            setIsDeleteModalOpen(false);
+          }} 
+          isActionLoading={isActionLoading} 
+        />
+      )}
+    </main>
   );
 }
