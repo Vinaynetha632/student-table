@@ -207,5 +207,5 @@ This project is open source and available under the [MIT License](LICENSE).
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://github.com/Vinaynetha632">Vinaynetha632</a>
+  Made with ❤️ by <a href="https://github.com/dhanadevunoori">dhanadevunoori</a>
 </p>
